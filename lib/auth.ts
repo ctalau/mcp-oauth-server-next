@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { store } from './store';
+import { verifyToken } from './tokens';
 import { log } from './logger';
 
 export const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
+export interface TokenPayload { type: 'token'; user: string; scope: string; }
 export type AuthedRequest = NextApiRequest & { authenticatedUser: string };
 
 export function withAuth(
@@ -15,32 +16,23 @@ export function withAuth(
 
     if (!authHeader?.startsWith('Bearer ')) {
       log('AUTH-MW', 'No Bearer token → 401');
-      res.setHeader(
-        'WWW-Authenticate',
+      res.setHeader('WWW-Authenticate',
         `Bearer realm="mcp", resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`
       );
       return res.status(401).json({ error: 'unauthorized', error_description: 'Bearer token required' });
     }
 
     const rawToken = authHeader.slice(7);
-    const td       = store.tokens.get(rawToken);
+    const payload  = verifyToken<TokenPayload>(rawToken);
 
-    if (!td) {
-      log('AUTH-MW', `Token not found: ${rawToken.slice(0, 8)}…`);
+    if (!payload || payload.type !== 'token') {
+      log('AUTH-MW', 'Token invalid or expired');
       res.setHeader('WWW-Authenticate', 'Bearer realm="mcp", error="invalid_token"');
       return res.status(401).json({ error: 'invalid_token' });
     }
 
-    const ageMs = Date.now() - td.created_at;
-    if (ageMs > td.expires_in * 1000) {
-      store.tokens.delete(rawToken);
-      log('AUTH-MW', 'Token expired');
-      res.setHeader('WWW-Authenticate', 'Bearer realm="mcp", error="invalid_token"');
-      return res.status(401).json({ error: 'invalid_token', error_description: 'Token expired' });
-    }
-
-    log('AUTH-MW', `Valid for user="${td.user}" (age=${Math.round(ageMs / 1000)}s)`);
-    (req as AuthedRequest).authenticatedUser = td.user;
+    log('AUTH-MW', `Valid for user="${payload.user}"`);
+    (req as AuthedRequest).authenticatedUser = payload.user;
     return handler(req as AuthedRequest, res);
   };
 }
