@@ -2,7 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyToken } from './tokens';
 import { log } from './logger';
 
-export const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+// Prefer explicit env var; fall back to Vercel-injected URLs (stable prod URL first),
+// then localhost for local dev.
+const _envBase = process.env.BASE_URL
+  || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
+  || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+  || 'http://localhost:3000';
+export const BASE_URL = _envBase;
 
 export interface TokenPayload { type: 'token'; user: string; scope: string; }
 export type AuthedRequest = NextApiRequest & { authenticatedUser: string };
