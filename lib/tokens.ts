@@ -3,7 +3,7 @@
 // (tokens from a previous deploy won't verify), which is acceptable for a PoC.
 import crypto from 'crypto';
 
-const SECRET = process.env.MCP_SECRET ?? 'dev-secret-change-in-production';
+const SECRET = 'poc-secret-not-for-production';
 
 export function createToken(payload: Record<string, unknown>, ttlMs?: number): string {
   const data = ttlMs ? { ...payload, exp: Date.now() + ttlMs } : payload;
