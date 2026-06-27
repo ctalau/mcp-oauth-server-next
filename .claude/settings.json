@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "mcp-oauth-poc": {
-      "type": "http",
-      "url": "https://mcp-oauth-server-next.vercel.app/api/mcp"
-    }
-  }
-}
